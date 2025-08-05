@@ -2,8 +2,22 @@
   "name": "react-native-voice-recorder-kit",
   "version": "0.1.0",
   "description": "voice recorder kit for ios and android",
-  "main": "./lib/module/index.js",
-  "types": "./lib/typescript/src/index.d.ts",
+  "keywords": [
+    "react-native",
+    "ios",
+    "android"
+  ],
+  "homepage": "https://github.com/fernandoamz/react-native-voice-recorder-kit#readme",
+  "bugs": {
+    "url": "https://github.com/fernandoamz/react-native-voice-recorder-kit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fernandoamz/react-native-voice-recorder-kit.git"
+  },
+  "license": "MIT",
+  "author": "Fernando Amezcua <fernandoamz148@gmail.com> (https://github.com/fernandoamz)",
+  "type": "commonjs",
   "exports": {
     ".": {
       "source": "./src/index.tsx",
@@ -11,6 +25,12 @@
       "default": "./lib/module/index.js"
     },
     "./package.json": "./package.json"
+  },
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "directories": {
+    "example": "example",
+    "lib": "lib"
   },
   "files": [
     "src",
@@ -31,6 +51,9 @@
     "!**/__mocks__",
     "!**/.*"
   ],
+  "workspaces": [
+    "example"
+  ],
   "scripts": {
     "example": "yarn workspace react-native-voice-recorder-kit-example",
     "test": "jest",
@@ -40,23 +63,8 @@
     "prepare": "bob build",
     "release": "release-it --only-version"
   },
-  "keywords": [
-    "react-native",
-    "ios",
-    "android"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/fernandoamz/react-native-voice-recorder-kit.git"
-  },
-  "author": "Fernando Amezcua <fernandoamz148@gmail.com> (https://github.com/fernandoamz)",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/fernandoamz/react-native-voice-recorder-kit/issues"
-  },
-  "homepage": "https://github.com/fernandoamz/react-native-voice-recorder-kit#readme",
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+  "dependencies": {
+    "react-native-voice-recorder-kit": "file:react-native-voice-recorder-kit-0.1.0.tgz"
   },
   "devDependencies": {
     "@commitlint/config-conventional": "^19.6.0",
@@ -88,9 +96,9 @@
     "react": "*",
     "react-native": "*"
   },
-  "workspaces": [
-    "example"
-  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "packageManager": "yarn@3.6.1",
   "jest": {
     "preset": "react-native",
@@ -160,8 +168,5 @@
     "languages": "kotlin-objc",
     "type": "turbo-module",
     "version": "0.51.1"
-  },
-  "dependencies": {
-    "react-native-voice-recorder-kit": "file:react-native-voice-recorder-kit-0.1.0.tgz"
   }
 }

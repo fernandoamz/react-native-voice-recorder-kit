@@ -1,5 +1,13 @@
 import { useState, useRef } from 'react';
-import { View, Button, Text, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Button,
+  Text,
+  StyleSheet,
+  Alert,
+  PermissionsAndroid,
+  Platform,
+} from 'react-native';
 import {
   startRecording,
   stopRecording,
@@ -22,6 +30,27 @@ const AudioControls = () => {
 
   const handleStartRecording = async () => {
     try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Microphone Permission',
+            message:
+              'This app needs access to your microphone to record audio.',
+            buttonPositive: 'OK',
+            buttonNegative: 'Cancel',
+          }
+        );
+
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert(
+            'Permission denied',
+            'Cannot record without microphone permission.'
+          );
+          return;
+        }
+      }
+
       console.log('🎙️ Starting recording...');
       const path = await startRecording();
       setRecording(true);

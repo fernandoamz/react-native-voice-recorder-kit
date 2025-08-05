@@ -10298,25 +10298,13 @@ __metadata:
     react-native: 0.79.2
     react-native-builder-bob: ^0.40.12
     react-native-monorepo-config: ^0.1.9
-    react-native-voice-recorder-kit: "file:../"
+    react-native-voice-recorder-kit: "file:../react-native-voice-recorder-kit-0.1.0.tgz"
   languageName: unknown
   linkType: soft
 
-"react-native-voice-recorder-kit@file:../::locator=react-native-voice-recorder-kit-example%40workspace%3Aexample":
+"react-native-voice-recorder-kit@file:../react-native-voice-recorder-kit-0.1.0.tgz::locator=react-native-voice-recorder-kit-example%40workspace%3Aexample":
   version: 0.1.0
-  resolution: "react-native-voice-recorder-kit@file:../#../::hash=559e7d&locator=react-native-voice-recorder-kit-example%40workspace%3Aexample"
-  dependencies:
-    react-native-voice-recorder-kit: "file:react-native-voice-recorder-kit-0.1.0.tgz"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  checksum: 1143a31f5caaf088a03f38360221d7e55851312e15b5f12036c3269c69574e84f076466586129705becb388796a719681779e354eb2fa56d245c5f3a90d0fa7e
-  languageName: node
-  linkType: hard
-
-"react-native-voice-recorder-kit@file:react-native-voice-recorder-kit-0.1.0.tgz::locator=react-native-voice-recorder-kit%40file%3A..%2F%23..%2F%3A%3Ahash%3D559e7d%26locator%3Dreact-native-voice-recorder-kit-example%2540workspace%253Aexample":
-  version: 0.1.0
-  resolution: "react-native-voice-recorder-kit@file:react-native-voice-recorder-kit-0.1.0.tgz::locator=react-native-voice-recorder-kit%40file%3A..%2F%23..%2F%3A%3Ahash%3D559e7d%26locator%3Dreact-native-voice-recorder-kit-example%2540workspace%253Aexample"
+  resolution: "react-native-voice-recorder-kit@file:../react-native-voice-recorder-kit-0.1.0.tgz::locator=react-native-voice-recorder-kit-example%40workspace%3Aexample"
   peerDependencies:
     react: "*"
     react-native: "*"

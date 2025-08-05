@@ -5,29 +5,26 @@ import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.module.model.ReactModuleInfo
 import com.facebook.react.module.model.ReactModuleInfoProvider
-import java.util.HashMap
 
 class VoiceRecorderKitPackage : BaseReactPackage() {
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
     return if (name == VoiceRecorderKitModule.NAME) {
       VoiceRecorderKitModule(reactContext)
-    } else {
-      null
-    }
+    } else null
   }
 
   override fun getReactModuleInfoProvider(): ReactModuleInfoProvider {
     return ReactModuleInfoProvider {
-      val moduleInfos: MutableMap<String, ReactModuleInfo> = HashMap()
-      moduleInfos[VoiceRecorderKitModule.NAME] = ReactModuleInfo(
-        VoiceRecorderKitModule.NAME,
-        VoiceRecorderKitModule.NAME,
-        false,  // canOverrideExistingModule
-        false,  // needsEagerInit
-        false,  // isCxxModule
-        true // isTurboModule
+      mapOf(
+        VoiceRecorderKitModule.NAME to ReactModuleInfo(
+          VoiceRecorderKitModule.NAME,
+          VoiceRecorderKitModule.NAME,
+          false, 
+          false,
+          false,
+          true 
+        )
       )
-      moduleInfos
     }
   }
 }
