@@ -1,3 +1,4 @@
+
 # VoiceRecorderKit 🎙️
 
 A native React Native module for recording and playing audio on **iOS** and **Android**, with support for music-backed recordings and loop playback.
@@ -123,6 +124,28 @@ await setLoopPlayback(true);
 
 ---
 
+## 🍏 iOS-Only Supported Events
+
+The following native events are only available on **iOS**:
+
+```swift
+override func supportedEvents() -> [String]! {
+  return [
+    "onRecordProgress",
+    "onPlaybackProgress",
+    "onAudioRouteChanged",
+    "onWaveformChunk"
+  ]
+}
+```
+
+- **onRecordProgress** — Fires updates during recording progress  
+- **onPlaybackProgress** — Fires updates during playback progress  
+- **onAudioRouteChanged** — Fires when the audio output route changes (e.g., headphones plugged/unplugged)  
+- **onWaveformChunk** — Provides real-time audio waveform chunks for visualization  
+
+---
+
 ## 🚧 Troubleshooting
 
 - Ensure microphone and file storage permissions are granted.
@@ -141,6 +164,8 @@ If you'd like to improve the module or report bugs, please open an issue or PR.
 
 ## 🚀 Coming Soon!
 
-- Add chunk function on android to read the real time audio wave
-- Add mix two audio files in android
+- Add chunk function on android to read the real time audio wave  
+- Add mix two audio files in android  
 - Example about draw the wave and show in the app as svg
+
+---
