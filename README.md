@@ -141,6 +141,6 @@ If you'd like to improve the module or report bugs, please open an issue or PR.
 
 ## 🪪 Coming Soon!
 
-Add chunk function on android to read the real time audio wave
-Add mix two audio files in android
-Example about draw the wave and show in the app as svg
+- Add chunk function on android to read the real time audio wave
+- Add mix two audio files in android
+- Example about draw the wave and show in the app as svg
