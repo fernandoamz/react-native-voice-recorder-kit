@@ -1,23 +1,23 @@
 
 # VoiceRecorderKit 🎙️
 
-A native React Native module for recording and playing audio on **iOS** and **Android**, with support for music-backed recordings and loop playback.
+A native React Native module for recording and playing audio on **iOS** and **Android**, with loop playback. Music-backed recording is implemented on iOS.
 
 ---
 
 ## ✨ Features
 
-- Start/stop voice recording  
-- Record over background music  
-- Playback with seek, pause/resume  
-- Looping playback toggle  
-- Cross-platform support (iOS & Android)
+- Start/stop voice recording
+- Record over background music on iOS (Android rejects this call)
+- Playback with seek, pause/resume
+- Looping playback, on by default
+- iOS and Android
 
 ---
 
 ## 📦 Installation
 
-> Requires React Native 0.65+
+> Requires React Native >= 0.76
 
 ### 1. Install the package
 
@@ -50,20 +50,25 @@ Then add the following permissions to your `ios/YourApp/Info.plist`:
 
 ### 3. Android Setup
 
-Add the following permissions to your `android/app/src/main/AndroidManifest.xml`:
+Add the microphone permission to `android/app/src/main/AndroidManifest.xml`:
 
 ```xml
 <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 ```
 
-For Android 11+ (API 30+), inside your `<application>` tag:
+Recordings are written to the app cache directory. Request `RECORD_AUDIO` at runtime before `startRecording()`:
 
-```xml
-<application
-  android:requestLegacyExternalStorage="true"
-  ... >
+```ts
+import { PermissionsAndroid, Platform } from 'react-native';
+
+if (Platform.OS === 'android') {
+  const granted = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+  );
+  if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+    throw new Error('RECORD_AUDIO permission not granted');
+  }
+}
 ```
 
 ---
@@ -87,68 +92,47 @@ import {
 ### ✅ Example
 
 ```ts
-// Start recording
 await startRecording();
 
-// Stop and get file path
-const filePath = await stopRecording();
+// duration is seconds
+const { path, duration } = await stopRecording();
 
-// Playback
-await startPlayback(filePath);
+// Looping is on by default. Turn it off before playback when looping is unwanted.
+await setLoopPlayback(false);
+await startPlayback(path);
 
-// Optional controls
 await pausePlayingAudio();
 await resumePlayingAudio();
-await seekToPosition(1500); // 1500 ms
+await seekToPosition(1.5); // seconds
 await stopPlayback();
 
-// Enable looping
-await setLoopPlayback(true);
+// iOS mixes the microphone with the music file.
+// Android rejects with ERR_NOT_IMPLEMENTED.
+const musicPath = '/path/to/music.m4a';
+await startRecordingWithMusic(musicPath);
 ```
 
 ---
 
 ## 📚 API Reference
 
-| Method                               | Description                                         |
-|-------------------------------------|-----------------------------------------------------|
-| `startRecording()`                  | Starts voice recording                              |
-| `stopRecording()`                   | Stops recording and returns file path               |
-| `startRecordingWithMusic(path)`    | Records voice while playing music from given path   |
-| `startPlayback(path)`              | Plays audio at the given file path                  |
-| `pausePlayingAudio()`              | Pauses playback                                     |
-| `resumePlayingAudio()`             | Resumes playback                                    |
-| `seekToPosition(ms)`               | Seeks to a specific position in milliseconds        |
-| `stopPlayback()`                   | Stops playback                                      |
-| `setLoopPlayback(true/false)`      | Enables or disables loop playback                   |
-
----
-
-## 🍏 iOS-Only Supported Events
-
-The following native events are only available on **iOS**:
-
-```swift
-override func supportedEvents() -> [String]! {
-  return [
-    "onRecordProgress",
-    "onPlaybackProgress",
-    "onAudioRouteChanged",
-    "onWaveformChunk"
-  ]
-}
-```
-
-- **onRecordProgress** — Fires updates during recording progress  
-- **onPlaybackProgress** — Fires updates during playback progress  
-- **onAudioRouteChanged** — Fires when the audio output route changes (e.g., headphones plugged/unplugged)  
-- **onWaveformChunk** — Provides real-time audio waveform chunks for visualization  
+| Method | Returns | Notes |
+|---|---|---|
+| `startRecording()` | `Promise<string>` | Cache `.m4a` path. Requires a granted microphone permission. Rejects `ERR_ALREADY_RECORDING` if a take is already active. |
+| `stopRecording()` | `Promise<{ path: string; duration: number }>` | `duration` is seconds. Rejects `ERR_NOT_RECORDING` if nothing is recording. |
+| `startRecordingWithMusic(path)` | `Promise<string>` | iOS records over the music file. Android rejects `ERR_NOT_IMPLEMENTED`. |
+| `startPlayback(path)` | `Promise<string>` | Resolves `"Playback started"`. Loops unless `setLoopPlayback(false)` ran first. |
+| `pausePlayingAudio()` | `Promise<string>` | `"paused"` or `"alreadyPaused"`. Rejects `ERR_PAUSE` when no player exists. |
+| `resumePlayingAudio()` | `Promise<string>` | `"resumed"` or `"alreadyPlaying"`. Rejects `ERR_RESUME` when no player exists. |
+| `seekToPosition(seconds)` | `Promise<void>` | Seconds, not milliseconds. `1.5` seeks to 1.5 seconds. Rejects `ERR_SEEK` when the player is missing or the time is outside the file. |
+| `stopPlayback()` | `Promise<void>` | |
+| `setLoopPlayback(shouldLoop)` | `Promise<string>` | Resolves `"loop set"`. Default is `true`. |
 
 ---
 
 ## 🚧 Troubleshooting
 
-- Ensure microphone and file storage permissions are granted.
+- Request the microphone permission at runtime before `startRecording()`.
 - Use physical devices to test recording; simulators may not support audio input.
 - If `startPlayback` fails, check the file path and format.
 - Logs can help trace path issues or audio playback errors.

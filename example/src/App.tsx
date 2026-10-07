@@ -1,12 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   View,
-  Button,
   Text,
   StyleSheet,
   Alert,
   PermissionsAndroid,
   Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  type PressableStateCallbackType,
 } from 'react-native';
 import {
   startRecording,
@@ -20,88 +23,184 @@ import {
   setLoopPlayback,
 } from 'react-native-voice-recorder-kit';
 
+type Tone = 'record' | 'play' | 'neutral';
+
+type ControlButtonProps = {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  tone?: Tone;
+};
+
+const SEEK_SECONDS = 5;
+const MUSIC_PATH = 'path/to/your/music/file.mp3';
+
+function isActivePress(state: PressableStateCallbackType): boolean {
+  const hovered = Boolean(
+    (state as PressableStateCallbackType & { hovered?: boolean }).hovered
+  );
+  return state.pressed || hovered;
+}
+
+function messageFrom(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function ControlButton({
+  label,
+  onPress,
+  disabled = false,
+  tone = 'neutral',
+}: ControlButtonProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={(state) => [
+        styles.button,
+        tone === 'record' ? styles.buttonRecord : null,
+        tone === 'play' ? styles.buttonPlay : null,
+        !disabled && isActivePress(state) ? styles.buttonPressed : null,
+        disabled ? styles.buttonDisabled : null,
+      ]}
+    >
+      {(state: PressableStateCallbackType) => (
+        <Text
+          style={[
+            styles.buttonLabel,
+            tone === 'record' ? styles.buttonLabelRecord : null,
+            tone === 'play' ? styles.buttonLabelPlay : null,
+            !disabled && isActivePress(state)
+              ? styles.buttonLabelPressed
+              : null,
+            disabled ? styles.buttonLabelDisabled : null,
+          ]}
+        >
+          {label}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
 const AudioControls = () => {
   const [recording, setRecording] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [loop, setLoop] = useState(false);
   const [recordingPath, setRecordingPath] = useState<string | null>(null);
-  const recordingResultRef = useRef<{ path: string; duration: number } | null>(
-    null
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
+  const [notice, setNotice] = useState(
+    'Record a take, then play it back. Looping is off until you turn it on.'
   );
+
+  const ensureMicrophonePermission = async () => {
+    if (Platform.OS !== 'android') {
+      return true;
+    }
+
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      {
+        title: 'Microphone permission',
+        message: 'This app needs the microphone to record audio.',
+        buttonPositive: 'OK',
+        buttonNegative: 'Cancel',
+      }
+    );
+
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  };
 
   const handleStartRecording = async () => {
     try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          {
-            title: 'Microphone Permission',
-            message:
-              'This app needs access to your microphone to record audio.',
-            buttonPositive: 'OK',
-            buttonNegative: 'Cancel',
-          }
+      const allowed = await ensureMicrophonePermission();
+      if (!allowed) {
+        setNotice('Microphone permission is required before recording.');
+        Alert.alert(
+          'Permission denied',
+          'Cannot record without microphone permission.'
         );
-
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert(
-            'Permission denied',
-            'Cannot record without microphone permission.'
-          );
-          return;
-        }
+        return;
       }
 
-      console.log('🎙️ Starting recording...');
       const path = await startRecording();
       setRecording(true);
+      setPlaying(false);
+      setPaused(false);
       setRecordingPath(path);
-      recordingResultRef.current = null;
+      setDurationSeconds(null);
+      setNotice('Recording.');
     } catch (error) {
-      console.error('❌ Error starting recording:', error);
-      Alert.alert('Recording Error', String(error));
+      const message = messageFrom(error);
+      setNotice(message);
+      Alert.alert('Recording error', message);
     }
   };
 
   const handleStopRecording = async () => {
     try {
-      console.log('🛑 Stopping recording...');
       const result = await stopRecording();
       setRecording(false);
       setRecordingPath(result.path);
-      recordingResultRef.current = result;
-      console.log('✅ Recording saved:', result);
+      setDurationSeconds(result.duration);
+      setNotice(`Saved ${result.duration.toFixed(1)} seconds.`);
     } catch (error) {
-      console.error('❌ Error stopping recording:', error);
-      Alert.alert('Stop Recording Error', String(error));
+      const message = messageFrom(error);
+      setNotice(message);
+      Alert.alert('Stop recording error', message);
     }
   };
 
   const handleStartRecordingWithMusic = async () => {
     try {
-      const musicPath = 'path/to/your/music/file.mp3'; // Replace with real path
-      await startRecordingWithMusic(musicPath);
+      if (Platform.OS !== 'android') {
+        const allowed = await ensureMicrophonePermission();
+        if (!allowed) {
+          setNotice('Microphone permission is required before recording.');
+          return;
+        }
+      }
+
+      await startRecordingWithMusic(MUSIC_PATH);
       setRecording(true);
-      recordingResultRef.current = null;
+      setNotice('Recording with music.');
     } catch (error) {
-      console.error('❌ Error recording with music:', error);
-      Alert.alert('Record with Music Error', String(error));
+      const message = messageFrom(error);
+      setRecording(false);
+      setNotice(
+        Platform.OS === 'android'
+          ? 'Recording over music is not implemented on Android.'
+          : `Could not open ${MUSIC_PATH}. ${message}`
+      );
+      Alert.alert('Record with music', message);
     }
   };
 
   const handleStartPlayback = async () => {
-    try {
-      const path = recordingResultRef.current?.path || recordingPath;
-      if (!path) {
-        Alert.alert('No Recording', 'Please record audio first.');
-        return;
-      }
+    if (!recordingPath) {
+      setNotice('Record audio before playback.');
+      Alert.alert('No recording', 'Please record audio first.');
+      return;
+    }
 
-      console.log('▶️ Playing file at:', path);
-      await startPlayback(path);
+    try {
+      await setLoopPlayback(loop);
+      await startPlayback(recordingPath);
       setPlaying(true);
+      setPaused(false);
+      setNotice(loop ? 'Playing on a loop.' : 'Playing once.');
     } catch (error) {
-      console.error('❌ Error starting playback:', error);
-      Alert.alert('Playback Error', String(error));
+      const message = messageFrom(error);
+      setPlaying(false);
+      setNotice(message);
+      Alert.alert('Playback error', message);
     }
   };
 
@@ -109,89 +208,286 @@ const AudioControls = () => {
     try {
       await stopPlayback();
       setPlaying(false);
+      setPaused(false);
+      setNotice('Playback stopped.');
     } catch (error) {
-      console.error('❌ Error stopping playback:', error);
-      Alert.alert('Stop Playback Error', String(error));
+      const message = messageFrom(error);
+      setNotice(message);
+      Alert.alert('Stop playback error', message);
     }
   };
 
   const handlePause = async () => {
     try {
       await pausePlayingAudio();
+      setPlaying(false);
+      setPaused(true);
+      setNotice('Playback paused.');
     } catch (error) {
-      console.error('❌ Error pausing playback:', error);
-      Alert.alert('Pause Error', String(error));
+      const message = messageFrom(error);
+      setNotice(message);
+      Alert.alert('Pause error', message);
     }
   };
 
   const handleResume = async () => {
     try {
       await resumePlayingAudio();
+      setPlaying(true);
+      setPaused(false);
+      setNotice('Playback resumed.');
     } catch (error) {
-      console.error('❌ Error resuming playback:', error);
-      Alert.alert('Resume Error', String(error));
+      const message = messageFrom(error);
+      setNotice(message);
+      Alert.alert('Resume error', message);
     }
   };
 
-  const handleSeek = async (positionMs: number) => {
+  const handleSeek = async () => {
     try {
-      await seekToPosition(positionMs);
+      await seekToPosition(SEEK_SECONDS);
+      setNotice(`Seeked to ${SEEK_SECONDS} seconds.`);
     } catch (error) {
-      console.error('❌ Error seeking:', error);
-      Alert.alert('Seek Error', String(error));
+      const message = messageFrom(error);
+      setNotice(message);
+      Alert.alert('Seek error', message);
     }
   };
 
   const handleSetLoop = async (shouldLoop: boolean) => {
     try {
       await setLoopPlayback(shouldLoop);
+      setLoop(shouldLoop);
+      setNotice(shouldLoop ? 'Loop is on.' : 'Loop is off.');
     } catch (error) {
-      console.error('❌ Error setting loop:', error);
-      Alert.alert('Loop Error', String(error));
+      const message = messageFrom(error);
+      setNotice(message);
+      Alert.alert('Loop error', message);
     }
   };
 
+  const durationLabel =
+    durationSeconds === null
+      ? 'Not saved yet'
+      : `${durationSeconds.toFixed(1)} s`;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.status}>
-        🎙️ Recording: {recording ? 'Yes' : 'No'}
-      </Text>
-      <Text style={styles.status}>▶️ Playing: {playing ? 'Yes' : 'No'}</Text>
-      <Text style={styles.path}>📁 File: {recordingPath || 'None yet'}</Text>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={styles.screen}
+    >
+      <StatusBar barStyle="light-content" />
+      <View style={styles.header}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Voice Recorder Kit
+        </Text>
+        <Text style={styles.subtitle}>Example controls</Text>
+      </View>
 
-      <Button title="Start Recording" onPress={handleStartRecording} />
-      <Button title="Stop Recording" onPress={handleStopRecording} />
-      <Button
-        title="Record with Music"
-        onPress={handleStartRecordingWithMusic}
-      />
+      <View accessibilityLiveRegion="polite" style={styles.statusCard}>
+        <Text style={styles.statusLine}>
+          {recording ? 'Recording' : 'Not recording'}
+        </Text>
+        <Text style={styles.statusLine}>
+          {playing ? 'Playing' : paused ? 'Paused' : 'Not playing'}
+        </Text>
+        <Text style={styles.statusLine}>Duration {durationLabel}</Text>
+        <Text style={styles.path}>
+          {recordingPath ? recordingPath : 'No file yet'}
+        </Text>
+        <Text style={styles.notice}>{notice}</Text>
+      </View>
 
-      <Button title="Play" onPress={handleStartPlayback} />
-      <Button title="Stop" onPress={handleStopPlayback} />
-      <Button title="Pause" onPress={handlePause} />
-      <Button title="Resume" onPress={handleResume} />
-      <Button title="Seek to 5s" onPress={() => handleSeek(5)} />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Record</Text>
+        <View style={styles.row}>
+          <ControlButton
+            label="Start recording"
+            tone="record"
+            disabled={recording}
+            onPress={handleStartRecording}
+          />
+          <ControlButton
+            label="Stop recording"
+            disabled={!recording}
+            onPress={handleStopRecording}
+          />
+        </View>
+        <ControlButton
+          label={
+            Platform.OS === 'android'
+              ? 'Record with music (Android)'
+              : 'Record with music'
+          }
+          disabled={recording}
+          onPress={handleStartRecordingWithMusic}
+        />
+      </View>
 
-      <Button title="Enable Loop" onPress={() => handleSetLoop(true)} />
-      <Button title="Disable Loop" onPress={() => handleSetLoop(false)} />
-    </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Play</Text>
+        <View style={styles.row}>
+          <ControlButton
+            label="Play"
+            tone="play"
+            disabled={!recordingPath || recording || playing}
+            onPress={handleStartPlayback}
+          />
+          <ControlButton
+            label="Stop"
+            disabled={!playing && !paused}
+            onPress={handleStopPlayback}
+          />
+        </View>
+        <View style={styles.row}>
+          <ControlButton
+            label="Pause"
+            disabled={!playing}
+            onPress={handlePause}
+          />
+          <ControlButton
+            label="Resume"
+            disabled={!paused}
+            onPress={handleResume}
+          />
+        </View>
+        <ControlButton
+          label="Seek to 5 seconds"
+          disabled={!playing && !paused}
+          onPress={handleSeek}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Loop</Text>
+        <View style={styles.row}>
+          <ControlButton
+            label="Turn loop on"
+            disabled={loop}
+            onPress={() => {
+              handleSetLoop(true).catch(() => undefined);
+            }}
+          />
+          <ControlButton
+            label="Turn loop off"
+            disabled={!loop}
+            onPress={() => {
+              handleSetLoop(false).catch(() => undefined);
+            }}
+          />
+        </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    gap: 12,
+  screen: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    backgroundColor: '#0E1420',
+    paddingTop: 24,
+    paddingBottom: 24,
+    paddingLeft: 24,
+    paddingRight: 24,
+    gap: 16,
   },
-  status: {
+  header: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  title: {
+    color: '#F7F8FA',
     fontSize: 16,
-    marginBottom: 4,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: '#C5CEDB',
+    fontSize: 16,
+    fontWeight: '400',
+    textAlign: 'center',
+  },
+  statusCard: {
+    backgroundColor: '#1A2332',
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    padding: 16,
+    gap: 8,
+  },
+  statusLine: {
+    color: '#F7F8FA',
+    fontSize: 16,
+    fontWeight: '600',
   },
   path: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    marginBottom: 10,
-    color: '#666',
+    color: '#C5CEDB',
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  notice: {
+    color: '#F7F8FA',
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  section: {
+    gap: 12,
+  },
+  sectionTitle: {
+    color: '#C5CEDB',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  button: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#243044',
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 16,
+    paddingRight: 16,
+  },
+  buttonRecord: {
+    backgroundColor: '#9F1239',
+  },
+  buttonPlay: {
+    backgroundColor: '#047857',
+  },
+  buttonPressed: {
+    opacity: 0.72,
+  },
+  buttonDisabled: {
+    backgroundColor: '#1A2332',
+    opacity: 1,
+  },
+  buttonLabel: {
+    color: '#F7F8FA',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  buttonLabelRecord: {
+    color: '#FFFFFF',
+  },
+  buttonLabelPlay: {
+    color: '#FFFFFF',
+  },
+  buttonLabelPressed: {
+    color: '#FFFFFF',
+  },
+  buttonLabelDisabled: {
+    color: '#8B97AB',
   },
 });
 
