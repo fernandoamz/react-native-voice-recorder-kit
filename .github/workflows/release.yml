@@ -36,21 +36,11 @@ jobs:
       - name: Run tests
         run: yarn test
 
-  build:
-    name: Build ${{ matrix.platform }}
+  build-android:
+    name: Build Android
     needs: verify
     if: "${{ !startsWith(github.event.head_commit.message, 'chore: release') }}"
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: Android
-            os: ubuntu-latest
-            task: build:android
-          - platform: iOS
-            os: macos-latest
-            task: build:ios
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -67,25 +57,51 @@ jobs:
         run: corepack enable
 
       - name: Set up JDK 17
-        if: matrix.platform == 'Android'
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: '17'
 
       - name: Accept Android SDK licenses
-        if: matrix.platform == 'Android'
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
 
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build ${{ matrix.platform }}
-        run: yarn turbo run ${{ matrix.task }}
+      - name: Build Android
+        run: yarn turbo run build:android
+
+  build-ios:
+    name: Build iOS
+    needs: verify
+    if: "${{ !startsWith(github.event.head_commit.message, 'chore: release') }}"
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build iOS
+        run: yarn turbo run build:ios
 
   publish:
     name: Publish GitHub release
-    needs: build
+    needs:
+      - build-android
+      - build-ios
     if: "${{ !startsWith(github.event.head_commit.message, 'chore: release') }}"
     runs-on: ubuntu-latest
     steps:
