@@ -1,12 +1,24 @@
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
+    prettier:
+      glob: '*.{js,jsx,ts,tsx,json,md,yml,yaml}'
+      exclude:
+        - yarn.lock
+        - package-lock.json
+        - lib/**
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
     lint:
-      glob: "*.{js,ts,jsx,tsx}"
+      glob: '*.{js,jsx,ts,tsx}'
+      exclude:
+        - lib/**
       run: npx eslint {staged_files}
     types:
-      glob: "*.{js,ts, jsx, tsx}"
-      run: npx tsc
+      glob: '*.{js,jsx,ts,tsx}'
+      exclude:
+        - lib/**
+      run: npx tsc --noEmit
 commit-msg:
   parallel: true
   commands:
